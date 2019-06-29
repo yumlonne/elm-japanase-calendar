@@ -77,4 +77,20 @@ suite =
                         |> .gregorianYear
                         |> Expect.equal 2020
             ]
+        , describe "toString"
+            [ test "should return `${eraName}${japaneseYearString}年`" <|
+                \_ ->
+                    let
+                        tests =
+                            [ { input = ymd 2019  5  1, expect = "令和元年" }
+                            , { input = ymd 2019  4 31, expect = "平成31年" }
+                            , { input = ymd -9999 1  1, expect = "unknown" }
+                            ]
+                    in
+                    tests
+                        |> List.map .input
+                        |> List.map JC.fromYMD
+                        |> List.map JC.toString
+                        |> Expect.equal (List.map .expect tests)
+            ]
         ]

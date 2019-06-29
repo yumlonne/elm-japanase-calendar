@@ -10,7 +10,11 @@ type alias JapaneseCalendar =
     }
 
 toString : JapaneseCalendar -> String
-toString jc = jc.era.name ++ jc.japaneseYearString ++ "年"
+toString jc =
+    if jc.era == unknownEra then
+        "unknown"
+    else
+        jc.era.name ++ jc.japaneseYearString ++ "年"
 
 
 type alias YMD =
