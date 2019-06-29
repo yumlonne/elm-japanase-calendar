@@ -1,6 +1,17 @@
-module JapaneseCalendar exposing(..)
+module JapaneseCalendar exposing(JapaneseCalendar, toString, YMD, fromYMD, fromEraWithYear, unknownEra, calendar)
 
 import List.Extra
+
+type alias JapaneseCalendar =
+    { era : Era
+    , gregorianYear : Int
+    , japaneseYear : Int
+    , japaneseYearString : String
+    }
+
+toString : JapaneseCalendar -> String
+toString jc = jc.era.name ++ jc.japaneseYearString ++ "年"
+
 
 type alias YMD =
     { year : Int
@@ -10,19 +21,19 @@ type alias YMD =
 
 ymdLessThanEqual : YMD -> YMD -> Bool
 ymdLessThanEqual d1 d2 =
-    if d1.year < d2.year then
-        True
-    else if d1.month <= d2.month then
-        True
+    if d1.year /= d2.year then
+        d1.year < d2.year
+    else if d1.month /= d2.month then
+        d1.month < d2.month
     else
         d1.day <= d2.day
 
-type alias JapaneseCalendar =
-    { era : Era
-    , gregorianYear : Int
-    , japaneseYear : Int
-    , japaneseYearString : String
-    }
+toJapaneseYearString : Int -> String
+toJapaneseYearString year =
+    if year == 1 then
+        "元"
+    else
+        String.fromInt year
 
 fromYMD : YMD -> JapaneseCalendar
 fromYMD date =
@@ -30,11 +41,7 @@ fromYMD date =
         maybeEra = List.Extra.find (\e -> ymdLessThanEqual e.startedOn date) calendar
         era = Maybe.withDefault unknownEra maybeEra
         japaneseYear = date.year - era.startedOn.year + 1
-        japaneseYearString =
-            if japaneseYear == 1 then
-                "元"
-            else
-                String.fromInt japaneseYear
+        japaneseYearString = toJapaneseYearString japaneseYear
     in
     { era = era
     , gregorianYear = date.year
@@ -49,11 +56,7 @@ fromEraWithYear eraName japaneseYear =
         maybeEra = List.Extra.find (\e -> e.name == eraName) calendar
         era = Maybe.withDefault unknownEra maybeEra
         gregorianYear = era.startedOn.year + japaneseYear - 1
-        japaneseYearString =
-            if japaneseYear == 1 then
-                "元"
-            else
-                String.fromInt japaneseYear
+        japaneseYearString = toJapaneseYearString japaneseYear
     in
     { era = era
     , gregorianYear = gregorianYear
