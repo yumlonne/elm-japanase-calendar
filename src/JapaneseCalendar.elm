@@ -145,29 +145,32 @@ fromYMD (YMD date) =
     }
 
 
-fromEraWithYear : String -> Int -> JapaneseCalendar
+fromEraWithYear : String -> Int -> Result String JapaneseCalendar
 fromEraWithYear eraName japaneseYear =
     let
-        maybeEra =
+        resultEra =
             List.Extra.find (\e -> e.name == eraName) calendar
-
-        era =
-            Maybe.withDefault unknownEra maybeEra
-
-        startedOn =
-            extract era.startedOn
-
-        gregorianYear =
-            startedOn.year + japaneseYear - 1
-
-        japaneseYearString =
-            toJapaneseYearString japaneseYear
+                |> Result.fromMaybe ("unknown era `" ++ eraName ++ "`")
     in
-    { era = era
-    , gregorianYear = gregorianYear
-    , japaneseYear = japaneseYear
-    , japaneseYearString = japaneseYearString
-    }
+    resultEra
+        |> Result.map
+            (\era ->
+                let
+                    startedOn =
+                        extract era.startedOn
+
+                    gregorianYear =
+                        startedOn.year + japaneseYear - 1
+
+                    japaneseYearString =
+                        toJapaneseYearString japaneseYear
+                in
+                { era = era
+                , gregorianYear = gregorianYear
+                , japaneseYear = japaneseYear
+                , japaneseYearString = japaneseYearString
+                }
+            )
 
 
 type alias Era =

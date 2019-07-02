@@ -101,14 +101,15 @@ suite =
                     tests
                         |> List.map .input
                         |> List.map (\(eraName, year) -> JC.fromEraWithYear eraName year)
+                        |> List.filterMap Result.toMaybe
                         |> List.map .gregorianYear
                         |> Expect.equal (List.map .expect tests)
 
             , test "should ignore boundaries" <|
                 \_ ->
                     JC.fromEraWithYear "平成" 32
-                        |> .gregorianYear
-                        |> Expect.equal 2020
+                        |> Result.map .gregorianYear
+                        |> Expect.equal (Ok 2020)
             ]
         , describe "toString"
             [ test "should return `${eraName}${japaneseYearString}年`" <|
