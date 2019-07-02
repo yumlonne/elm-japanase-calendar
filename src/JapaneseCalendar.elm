@@ -1,4 +1,4 @@
-module JapaneseCalendar exposing (JapaneseCalendar, ymd, calendar, fromEraWithYear, fromYMD, toString)
+module JapaneseCalendar exposing (JapaneseCalendar, ymd, ymdErrors, calendar, fromEraWithYear, fromYMD, toString)
 
 import Array
 import List.Extra
@@ -13,18 +13,38 @@ type alias JapaneseCalendar =
     }
 
 
+type alias YMDRecord =
+    { year : Int
+    , month : Int
+    , day : Int
+    }
+
+
+ymd : Int -> Int -> Int -> YMDRecord
+ymd y m d =
+    { year = y
+    , month = m
+    , day = d
+    }
+
+
 toString : JapaneseCalendar -> String
 toString jc =
-    if jc.era == unknownEra then
-        "unknown"
-
-    else
         jc.era.name ++ jc.japaneseYearString ++ "年"
 
 
-ymd : Int -> Int -> Int -> Result String YMD
-ymd year month day =
+ymdErrors : YMDRecord -> List String
+ymdErrors ymdRecord =
     let
+        year =
+            ymdRecord.year
+
+        month =
+            ymdRecord.month
+
+        day =
+            ymdRecord.day
+
         yearChecker y =
             if y >= 1868 then
                 Nothing
@@ -49,55 +69,31 @@ ymd year month day =
                 lastDays =
                     Array.fromList [ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ]
 
-                lastDay =
+                maybeLastDay =
                     if isLeapYear y && m == 2 then
-                        29
+                        Just 29
 
                     else
                         Array.get (m - 1) lastDays
-                            |> Maybe.withDefault 0
             in
-            if 1 <= d && d <= lastDay then
-                Nothing
+            maybeLastDay
+                |> Maybe.andThen
+                    (\lastDay ->
+                        if 1 <= d && d <= lastDay then
+                            Nothing
 
-            else
-                Just <| "Day `" ++ String.fromInt d ++ "` is out of range 1 and " ++ String.fromInt lastDay
+                        else
+                            Just <| "Day `" ++ String.fromInt d ++ "` is out of range 1 and " ++ String.fromInt lastDay
+                    )
 
-        ymdErrors y m d =
+        errors y m d =
             Maybe.Extra.values [ yearChecker y, monthChecker m, dayChecker y m d ]
-
-        monthRange =
-            List.range 1 12
-
-        errors = ymdErrors year month day
     in
-    case errors of
-        [] ->
-            Ok <| YMD { year = year, month = month, day = day }
-        _ ->
-            Err <| String.join ", " errors
+    errors year month day
 
 
-type YMD
-    = YMD YMDRecord
-
-
-type alias YMDRecord =
-    { year : Int
-    , month : Int
-    , day : Int
-    }
-
-
-extract : YMD -> YMDRecord
-extract ymdValue =
-    case ymdValue of
-        YMD record ->
-            record
-
-
-ymdLessThanEqual : YMD -> YMD -> Bool
-ymdLessThanEqual (YMD d1) (YMD d2) =
+ymdLessThanEqual : YMDRecord -> YMDRecord -> Bool
+ymdLessThanEqual d1 d2 =
     if d1.year /= d2.year then
         d1.year < d2.year
 
@@ -117,80 +113,74 @@ toJapaneseYearString year =
         String.fromInt year
 
 
-fromYMD : YMD -> JapaneseCalendar
-fromYMD (YMD date) =
-    let
-        dateYMD =
-            YMD date
+fromYMD : YMDRecord -> Result (List String) JapaneseCalendar
+fromYMD ymdRecord =
+    case ymdErrors ymdRecord of
+        [] ->
+            let
+                resultEra =
+                    List.Extra.find (\e -> ymdLessThanEqual e.startedOn ymdRecord) calendar
+                        |> Result.fromMaybe [ "can't find Era" ]
+            in
+            Result.map
+                (\era ->
+                    let
+                        japaneseYear =
+                            ymdRecord.year - era.startedOn.year + 1
 
-        maybeEra =
-            List.Extra.find (\e -> ymdLessThanEqual e.startedOn dateYMD) calendar
+                        japaneseYearString =
+                            toJapaneseYearString japaneseYear
+                    in
+                    { era = era
+                    , gregorianYear = ymdRecord.year
+                    , japaneseYear = japaneseYear
+                    , japaneseYearString = japaneseYearString
+                    }
+                )
+                resultEra
 
-        era =
-            Maybe.withDefault unknownEra maybeEra
-
-        startedOn =
-            extract era.startedOn
-
-        japaneseYear =
-            date.year - startedOn.year + 1
-
-        japaneseYearString =
-            toJapaneseYearString japaneseYear
-    in
-    { era = era
-    , gregorianYear = date.year
-    , japaneseYear = japaneseYear
-    , japaneseYearString = japaneseYearString
-    }
+        errors ->
+            Err errors
 
 
-fromEraWithYear : String -> Int -> Result String JapaneseCalendar
+fromEraWithYear : String -> Int -> Result (List String) JapaneseCalendar
 fromEraWithYear eraName japaneseYear =
     let
         resultEra =
             List.Extra.find (\e -> e.name == eraName) calendar
-                |> Result.fromMaybe ("unknown era `" ++ eraName ++ "`")
+                |> Result.fromMaybe ["unknown era `" ++ eraName ++ "`"]
     in
-    resultEra
-        |> Result.map
-            (\era ->
-                let
-                    startedOn =
-                        extract era.startedOn
+    Result.map
+        (\era ->
+            let
+                gregorianYear =
+                    era.startedOn.year + japaneseYear - 1
 
-                    gregorianYear =
-                        startedOn.year + japaneseYear - 1
-
-                    japaneseYearString =
-                        toJapaneseYearString japaneseYear
-                in
-                { era = era
-                , gregorianYear = gregorianYear
-                , japaneseYear = japaneseYear
-                , japaneseYearString = japaneseYearString
-                }
-            )
+                japaneseYearString =
+                    toJapaneseYearString japaneseYear
+            in
+            { era = era
+            , gregorianYear = gregorianYear
+            , japaneseYear = japaneseYear
+            , japaneseYearString = japaneseYearString
+            }
+        )
+        resultEra
 
 
 type alias Era =
     { name : String
-    , startedOn : YMD
+    , startedOn : YMDRecord
     }
-
-
-unknownEra : Era
-unknownEra =
-    { name = "unknown", startedOn = YMD { year = round (-1 / 0), month = 1, day = 1 } }
 
 
 calendar : List Era
 calendar =
-    [ { name = "令和", startedOn = YMD { year = 2019, month = 5, day = 1 } }
-    , { name = "平成", startedOn = YMD { year = 1989, month = 1, day = 8 } }
-    , { name = "昭和", startedOn = YMD { year = 1926, month = 12, day = 25 } }
-    , { name = "大正", startedOn = YMD { year = 1912, month = 7, day = 30 } }
-    , { name = "明治", startedOn = YMD { year = 1868, month = 1, day = 1 } }
+    [ { name = "令和", startedOn = { year = 2019, month = 5, day = 1 } }
+    , { name = "平成", startedOn = { year = 1989, month = 1, day = 8 } }
+    , { name = "昭和", startedOn = { year = 1926, month = 12, day = 25 } }
+    , { name = "大正", startedOn = { year = 1912, month = 7, day = 30 } }
+    , { name = "明治", startedOn = { year = 1868, month = 1, day = 1 } }
 
     -- more?
     ]

@@ -9,13 +9,14 @@ import JapaneseCalendar as JC
 suite : Test
 suite =
     describe "The JapaneseCalendar module"
-        [ describe "ymd"
-            [ fuzz (intRange -9999 1867) "should return Err for too past ymd" <|
+        [ describe "ymdErrors"
+            [ fuzz (intRange -9999 1867) "should return error for too past ymd" <|
                 \year ->
                     JC.ymd year 1 1
-                        |> Result.Extra.isErr
-                        |> Expect.true "Result is Err"
-            , test "should return Err for not exist ymd" <|
+                        |> JC.ymdErrors
+                        |> List.length
+                        |> Expect.equal 1
+            , test "should return error for not exist ymd" <|
                 \_ ->
                     let
                         tests =
@@ -28,9 +29,10 @@ suite =
                             ]
                     in
                     tests
-                        |> List.map Result.Extra.isErr
+                        |> List.map JC.ymdErrors
+                        |> List.map (List.isEmpty >> not)
                         |> List.foldl (&&) True
-                        |> Expect.true "Result is Err"
+                        |> Expect.true "returns error"
             , test "should consider leap years" <|
                 \_ ->
                     let
@@ -48,7 +50,8 @@ suite =
                     in
                     tests
                         |> List.map (\test -> JC.ymd test.year 2 29)
-                        |> List.map Result.Extra.isOk
+                        |> List.map JC.ymdErrors
+                        |> List.map List.isEmpty
                         |> Expect.equal (List.map .expect tests)
 
             ]
@@ -71,10 +74,8 @@ suite =
                     in
                     tests
                         |> List.map .input
-                        |> List.filterMap Result.toMaybe
-                        |> List.map JC.fromYMD
-                        |> List.map JC.toString
-                        |> Expect.equal (List.map .expect tests)
+                        |> List.map (JC.fromYMD >> Result.map JC.toString)
+                        |> Expect.equal (List.map (.expect >> Ok) tests)
 
             ]
         , describe "fromEraWithYear"
@@ -122,9 +123,7 @@ suite =
                     in
                     tests
                         |> List.map .input
-                        |> List.filterMap Result.toMaybe
-                        |> List.map JC.fromYMD
-                        |> List.map JC.toString
-                        |> Expect.equal (List.map .expect tests)
+                        |> List.map (JC.fromYMD >> Result.map JC.toString)
+                        |> Expect.equal (List.map (.expect >> Ok) tests)
             ]
         ]
