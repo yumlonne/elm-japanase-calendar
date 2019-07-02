@@ -15,6 +15,42 @@ suite =
                     JC.ymd year 1 1
                         |> Result.Extra.isErr
                         |> Expect.true "Result is Err"
+            , test "should return Err for not exist ymd" <|
+                \_ ->
+                    let
+                        tests =
+                            [ JC.ymd 1890 10 50
+                            , JC.ymd -1 -1 -1
+                            , JC.ymd 2019 5 0
+                            , JC.ymd 2019 5 32
+                            , JC.ymd 2019 6 31
+                            , JC.ymd 2019 2 29
+                            ]
+                    in
+                    tests
+                        |> List.map Result.Extra.isErr
+                        |> List.foldl (&&) True
+                        |> Expect.true "Result is Err"
+            , test "should consider leap years" <|
+                \_ ->
+                    let
+                        tests =
+                            [ { year = 1888, expect = True }
+                            , { year = 1900, expect = False }
+                            , { year = 2000, expect = True }
+                            , { year = 2004, expect = True }
+                            , { year = 2005, expect = False }
+                            , { year = 2010, expect = False }
+                            , { year = 2012, expect = True }
+                            , { year = 2016, expect = True }
+                            , { year = 2400, expect = True }
+                            ]
+                    in
+                    tests
+                        |> List.map (\test -> JC.ymd test.year 2 29)
+                        |> List.map Result.Extra.isOk
+                        |> Expect.equal (List.map .expect tests)
+
             ]
         , describe "fromYMD"
             [ test "should return correct JapaneseCalendar" <|

@@ -1,1 +1,0 @@
-module JapaneseCalendar.YMD exposing (..)

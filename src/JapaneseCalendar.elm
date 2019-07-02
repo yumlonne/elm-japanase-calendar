@@ -1,4 +1,4 @@
-module JapaneseCalendar exposing (JapaneseCalendar, ymd, calendar, fromEraWithYear, fromYMD, toString, unknownEra)
+module JapaneseCalendar exposing (JapaneseCalendar, ymd, calendar, fromEraWithYear, fromYMD, toString)
 
 import Array
 import List.Extra
