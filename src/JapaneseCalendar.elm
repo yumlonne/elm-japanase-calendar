@@ -1,4 +1,4 @@
-module JapaneseCalendar exposing (JapaneseCalendar, ymd, ymdErrors, calendar, fromEraWithYear, fromYMD, toString)
+module JapaneseCalendar exposing (JapaneseCalendar, calendar, fromEraWithYear, fromYMD, lastJapaneseYear, toString, ymd)
 
 import Array
 import List.Extra
@@ -30,7 +30,7 @@ ymd y m d =
 
 toString : JapaneseCalendar -> String
 toString jc =
-        jc.era.name ++ jc.japaneseYearString ++ "年"
+    jc.era.name ++ jc.japaneseYearString ++ "年"
 
 
 ymdErrors : YMDRecord -> List String
@@ -148,7 +148,7 @@ fromEraWithYear eraName japaneseYear =
     let
         resultEra =
             List.Extra.find (\e -> e.name == eraName) calendar
-                |> Result.fromMaybe ["unknown era `" ++ eraName ++ "`"]
+                |> Result.fromMaybe [ "unknown era `" ++ eraName ++ "`" ]
     in
     Result.map
         (\era ->
@@ -171,16 +171,27 @@ fromEraWithYear eraName japaneseYear =
 type alias Era =
     { name : String
     , startedOn : YMDRecord
+    , endedOn : Maybe YMDRecord
     }
+
+
+lastJapaneseYear : Int -> Era -> Int
+lastJapaneseYear currentYear era =
+    case era.endedOn of
+        Just endedOn ->
+            endedOn.year - era.startedOn.year + 1
+
+        Nothing ->
+            currentYear - era.startedOn.year + 1
 
 
 calendar : List Era
 calendar =
-    [ { name = "令和", startedOn = { year = 2019, month = 5, day = 1 } }
-    , { name = "平成", startedOn = { year = 1989, month = 1, day = 8 } }
-    , { name = "昭和", startedOn = { year = 1926, month = 12, day = 25 } }
-    , { name = "大正", startedOn = { year = 1912, month = 7, day = 30 } }
-    , { name = "明治", startedOn = { year = 1868, month = 1, day = 1 } }
+    [ { name = "令和", startedOn = ymd 2019 5 1, endedOn = Nothing }
+    , { name = "平成", startedOn = ymd 1989 1 8, endedOn = Just <| ymd 2019 4 30 }
+    , { name = "昭和", startedOn = ymd 1926 12 25, endedOn = Just <| ymd 1989 1 7 }
+    , { name = "大正", startedOn = ymd 1912 7 30, endedOn = Just <| ymd 1926 12 24 }
+    , { name = "明治", startedOn = ymd 1868 1 1, endedOn = Just <| ymd 1912 7 29 }
 
     -- more?
     ]
